@@ -20,7 +20,6 @@ from dashboard.token_cost import (
 )
 from dashboard.recommendations import generate_recommendations, print_recommendations
 from dashboard.timeline import ExecutionTimeline
-from dashboard.db import log_run
 
 
 # Load environment variables
@@ -79,92 +78,9 @@ def web_search(query, timeline):
         return "\n\n".join(results), search_latency
 
 
-def _build_result(
-    answer,
-    total_latency,
-    search_latency,
-    llm_latency,
-    error_occurred,
-    cost_data,
-    timeline,
-    failure_report=None
-):
-    """
-    Compute health score, grade, bottleneck, and recommendations,
-    then assemble everything into the single dict the dashboard,
-    SigNoz spans, and local history log all rely on.
-    """
-
-    total_tokens = cost_data["total_tokens"] if cost_data else 0
-
-    health_score = calculate_health_score(
-        total_latency=total_latency,
-        search_latency=search_latency,
-        llm_latency=llm_latency,
-        error=error_occurred,
-        token_count=total_tokens
-    )
-
-    grade, status = get_health_grade(health_score)
-
-    bottleneck = find_bottleneck(
-        search_latency=search_latency,
-        llm_latency=llm_latency
-    )
-
-    recommendations = generate_recommendations(
-        health_score=health_score,
-        bottleneck=bottleneck,
-        total_latency=total_latency,
-        search_latency=search_latency,
-        llm_latency=llm_latency,
-        token_cost_data=cost_data,
-        error=error_occurred,
-        failure_report=failure_report
-    )
-
-    return {
-        "answer": answer,
-        "total_latency": total_latency,
-        "search_latency": search_latency,
-        "llm_latency": llm_latency,
-        "health_score": health_score,
-        "health_grade": grade,
-        "health_status": status,
-        "bottleneck": bottleneck,
-        "recommendations": recommendations,
-        "cost_data": cost_data,
-        "timeline": timeline.steps,
-        "error": error_occurred,
-        "failure_report": failure_report,
-    }
-
-
 def research_agent(question):
     """
     Main AI Research Agent with full observability dashboard.
-
-    Always returns a dict (never None), even on failure, so callers
-    like the Streamlit dashboard can rely on a consistent shape:
-
-    {
-        "answer": str,
-        "total_latency": float,
-        "search_latency": float,
-        "llm_latency": float,
-        "health_score": int,
-        "health_grade": str,
-        "health_status": str,
-        "bottleneck": {"component", "latency", "severity", "message", "suggestion"},
-        "recommendations": [ {...}, ... ],
-        "cost_data": {...} | None,
-        "timeline": [ {...}, ... ],
-        "error": bool,
-        "failure_report": {...} | None,
-    }
-
-    Every run (success or failure) is also logged locally via
-    dashboard.db.log_run() for the History tab.
     """
 
     agent_start_time = time.time()
@@ -172,7 +88,6 @@ def research_agent(question):
     error_occurred = False
     failure_report = None
     cost_data = None
-    response = None
 
     with tracer.start_as_current_span("research_agent") as agent_span:
 
@@ -207,33 +122,10 @@ def research_agent(question):
             search_results, search_latency = web_search(search_query, timeline)
         except Exception as exc:
             search_latency = time.time() - agent_start_time
-            llm_latency = 0.0
-            total_latency = time.time() - agent_start_time
             error_occurred = True
-
             failure_report = analyze_failure(exception=exc)
             print_failure_report(failure_report)
-
-            result = _build_result(
-                answer=f"⚠️ The agent failed during web search: {exc}",
-                total_latency=total_latency,
-                search_latency=search_latency,
-                llm_latency=llm_latency,
-                error_occurred=True,
-                cost_data=None,
-                timeline=timeline,
-                failure_report=failure_report
-            )
-
-            agent_span.set_attribute("agent.total_latency_seconds", total_latency)
-            agent_span.set_attribute("agent.health_score", result["health_score"])
-            agent_span.set_attribute("agent.health_grade", result["health_grade"])
-            agent_span.set_attribute("agent.bottleneck", result["bottleneck"]["component"])
-            agent_span.set_attribute("agent.error", True)
-
-            log_run(question, result)
-
-            return result
+            return None
 
         # =============================================
         # STEP 3: LLM ANALYSIS
@@ -312,7 +204,7 @@ Give a clear, accurate, and useful answer.
                 icon="⚡"
             )
 
-            print("✅ Answer generated!" if not error_occurred else "❌ LLM call failed")
+            print("✅ Answer generated!")
 
         # =============================================
         # STEP 5: COMPUTE ALL METRICS
@@ -320,62 +212,79 @@ Give a clear, accurate, and useful answer.
 
         total_latency = time.time() - agent_start_time
 
-        if error_occurred and answer is None:
-            answer = f"⚠️ The agent failed during LLM analysis: {failure_report['error_text']}"
+        total_tokens = cost_data["total_tokens"] if cost_data else 0
 
-        result = _build_result(
-            answer=answer,
+        health_score = calculate_health_score(
             total_latency=total_latency,
             search_latency=search_latency,
             llm_latency=llm_latency,
-            error_occurred=error_occurred,
-            cost_data=cost_data,
-            timeline=timeline,
+            error=error_occurred,
+            token_count=total_tokens
+        )
+
+        grade, status = get_health_grade(health_score)
+
+        bottleneck = find_bottleneck(
+            search_latency=search_latency,
+            llm_latency=llm_latency
+        )
+
+        recommendations = generate_recommendations(
+            health_score=health_score,
+            bottleneck=bottleneck,
+            total_latency=total_latency,
+            search_latency=search_latency,
+            llm_latency=llm_latency,
+            token_cost_data=cost_data,
+            error=error_occurred,
             failure_report=failure_report
         )
 
         # Store all metrics in SigNoz
         agent_span.set_attribute("agent.total_latency_seconds", total_latency)
-        agent_span.set_attribute("agent.health_score", result["health_score"])
-        agent_span.set_attribute("agent.health_grade", result["health_grade"])
-        agent_span.set_attribute("agent.bottleneck", result["bottleneck"]["component"])
+        agent_span.set_attribute("agent.health_score", health_score)
+        agent_span.set_attribute("agent.health_grade", grade)
+        agent_span.set_attribute("agent.bottleneck", bottleneck["component"])
         agent_span.set_attribute("agent.error", error_occurred)
 
         # =============================================
-        # STEP 6: PRINT FULL DASHBOARD (terminal mode)
+        # STEP 6: PRINT FULL DASHBOARD
         # =============================================
 
         print(f"\n⏱️  Total Agent Time  : {total_latency:.2f}s")
         print(f"🔍 Search Time      : {search_latency:.2f}s")
         print(f"⚡ LLM Time         : {llm_latency:.2f}s")
 
+        # Health Score
         print(f"\n🩺 AGENT HEALTH SCORE")
         print("=" * 40)
-        print(f"Score  : {result['health_score']}/100")
-        print(f"Grade  : {result['health_grade']}  —  {result['health_status']}")
+        print(f"Score  : {health_score}/100")
+        print(f"Grade  : {grade}  —  {status}")
 
+        # Bottleneck
         print(f"\n🚨 BOTTLENECK DETECTION")
         print("=" * 40)
-        print(f"Component : {result['bottleneck']['component']}")
-        print(f"Latency   : {result['bottleneck']['latency']:.2f}s")
-        print(f"Severity  : {result['bottleneck']['severity']}")
-        print(f"Message   : {result['bottleneck']['message']}")
-        print(f"Suggestion: {result['bottleneck']['suggestion']}")
+        print(f"Component : {bottleneck['component']}")
+        print(f"Latency   : {bottleneck['latency']:.2f}s")
+        print(f"Severity  : {bottleneck['severity']}")
+        print(f"Message   : {bottleneck['message']}")
+        print(f"Suggestion: {bottleneck['suggestion']}")
 
+        # Failure analysis (only when an error occurred)
         if error_occurred and failure_report:
             print_failure_report(failure_report)
 
+        # Token & cost
         if cost_data:
             print_token_report(cost_data)
 
-        print_recommendations(result["recommendations"])
+        # AI recommendations
+        print_recommendations(recommendations)
 
+        # Execution timeline
         timeline.print_timeline()
 
-        # Log this run (success or failure) to local history.
-        log_run(question, result)
-
-        return result
+        return answer
 
 
 # =============================================
@@ -386,7 +295,8 @@ if __name__ == "__main__":
 
     question = input("\n🔍 Ask your research question: ")
 
-    result = research_agent(question)
+    answer = research_agent(question)
 
-    print("\n📄 FINAL ANSWER:")
-    print(result["answer"])
+    if answer:
+        print("\n📄 FINAL ANSWER:")
+        print(answer)

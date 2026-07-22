@@ -13,7 +13,7 @@ load_dotenv()
 
 # Create application information
 resource = Resource.create({
-    "service.name": "agentwatch-ai"
+    "service.name": "tracepilot-ai"
 })
 
 # Create tracer provider
@@ -39,4 +39,4 @@ trace_provider.add_span_processor(span_processor)
 trace.set_tracer_provider(trace_provider)
 
 # Create tracer
-tracer = trace.get_tracer("agentwatch-ai")
+tracer = trace.get_tracer("tracepilot-ai")

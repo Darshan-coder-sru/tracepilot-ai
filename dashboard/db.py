@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 # Store the database at the project root, alongside requirements.txt
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "agentwatch.db"
+    "tracepilot.db"
 )
 
 

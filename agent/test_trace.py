@@ -6,11 +6,11 @@ from observability.telemetry import tracer
 
 
 def main():
-    with tracer.start_as_current_span("agentwatch-test") as span:
-        span.set_attribute("test.message", "Hello from AgentWatch AI")
+    with tracer.start_as_current_span("tracepilot-test") as span:
+        span.set_attribute("test.message", "Hello from TracePilot AI")
         span.set_attribute("test.status", "success")
 
-        print("🚀 AgentWatch AI trace started!")
+        print("🚀 TracePilot AI trace started!")
 
         time.sleep(2)
 

@@ -14,13 +14,13 @@ SIGNOZ_API_URL = os.getenv("SIGNOZ_API_URL")
 # This is DIFFERENT from SIGNOZ_INGESTION_KEY used to send traces in.
 SIGNOZ_API_KEY = os.getenv("SIGNOZ_API_KEY")
 
-SERVICE_NAME = "agentwatch-ai"
+SERVICE_NAME = "tracepilot-ai"
 
 
 def fetch_recent_traces(limit=10, lookback_hours=24, debug_raw=False):
     """
     Fetch the most recent 'research_agent' root spans (one per trace)
-    for the agentwatch-ai service, using the SigNoz Trace API.
+    for the tracepilot-ai service, using the SigNoz Trace API.
 
     Returns a list of dicts:
         {

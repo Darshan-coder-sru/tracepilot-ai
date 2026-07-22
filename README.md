@@ -230,12 +230,17 @@ pip install -r requirements.txt
 Create a `.env` file
 
 ```env
-GROQ_API_KEY=your_api_key
+GROQ_API_KEY=your_groq_api_key
 
-SIGNOZ_ENDPOINT=your_endpoint
+SIGNOZ_ENDPOINT=your_signoz_ingestion_endpoint
+SIGNOZ_INGESTION_KEY=your_signoz_ingestion_key
 
-SIGNOZ_HEADERS=your_headers
+SIGNOZ_API_URL=your_signoz_workspace_url
+SIGNOZ_API_KEY=your_signoz_service_account_key
 ```
+
+> `SIGNOZ_ENDPOINT` / `SIGNOZ_INGESTION_KEY` are used to **send** traces into SigNoz (OpenTelemetry export).
+> `SIGNOZ_API_URL` / `SIGNOZ_API_KEY` are used to **read** traces back out for the Trace View tab — `SIGNOZ_API_KEY` is a Service Account key from SigNoz Settings → Service Accounts, not the ingestion key.
 
 Run the dashboard
 

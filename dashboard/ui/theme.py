@@ -30,8 +30,38 @@ html, body, [class*="css"] {
     color: var(--tp-text);
 }
 
+/* Native Streamlit toolbar: Deploy button, "running man" status widget,
+   and the "⋮" menu. This is Streamlit's own chrome (distinct from our
+   app's Refresh/Settings buttons, styled separately below) and keeps
+   its default white background unless themed explicitly, which makes
+   its icons/text invisible once our global light text color applies. */
+header[data-testid="stHeader"] {
+    background: var(--tp-bg) !important;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+header[data-testid="stHeader"] * {
+    color: var(--tp-text) !important;
+    fill: var(--tp-text) !important;
+}
+
+header[data-testid="stHeader"] button,
+header[data-testid="stHeader"] [role="button"],
+header[data-testid="stHeader"] [data-testid^="stBaseButton"],
+header[data-testid="stHeader"] [data-testid="stStatusWidget"] {
+    background: var(--tp-card) !important;
+    border: 1px solid var(--tp-border) !important;
+    border-radius: 8px !important;
+}
+
+header[data-testid="stHeader"] button:hover,
+header[data-testid="stHeader"] [role="button"]:hover,
+header[data-testid="stHeader"] [data-testid^="stBaseButton"]:hover {
+    background: var(--tp-card-hover) !important;
+}
+
 .block-container {
-    padding-top: 1.5rem;
+    padding-top: 4.5rem;
     padding-bottom: 2rem;
     max-width: 1400px;
 }
@@ -69,19 +99,65 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     font-weight: 700 !important;
 }
 
+.stButton > button {
+    background: var(--tp-card) !important;
+    border: 1px solid var(--tp-border-strong) !important;
+    border-radius: 10px !important;
+    color: var(--tp-text) !important;
+    font-weight: 500;
+}
+
+.stButton > button:hover {
+    background: var(--tp-card-hover) !important;
+    border-color: var(--tp-accent) !important;
+    color: var(--tp-text) !important;
+}
+
+.stButton > button p {
+    color: var(--tp-text) !important;
+}
+
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    border: none;
-    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    border: none !important;
+    border-radius: 10px !important;
     font-weight: 600;
     padding: 0.55rem 1.4rem;
     transition: opacity 0.15s ease;
 }
 
+.stButton > button[kind="primary"] p {
+    color: white !important;
+}
+
 .stButton > button[kind="primary"]:hover {
     opacity: 0.92;
-    border: none;
-    color: white;
+    border: none !important;
+    color: white !important;
+}
+
+/* Popover trigger (e.g. "Settings") and its dropdown panel */
+[data-testid="stPopover"] > div > button {
+    background: var(--tp-card) !important;
+    border: 1px solid var(--tp-border-strong) !important;
+    border-radius: 10px !important;
+    color: var(--tp-text) !important;
+}
+
+[data-testid="stPopover"] > div > button:hover {
+    background: var(--tp-card-hover) !important;
+    border-color: var(--tp-accent) !important;
+    color: var(--tp-text) !important;
+}
+
+[data-testid="stPopover"] > div > button p {
+    color: var(--tp-text) !important;
+}
+
+div[data-testid="stPopoverBody"] {
+    background: var(--tp-bg-secondary) !important;
+    border: 1px solid var(--tp-border-strong) !important;
+    color: var(--tp-text) !important;
 }
 
 .stTextInput > div > div > input,

@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from dashboard.ui.components import health_gauge, no_run_yet, sub_score_rows
+from dashboard.ui.components import health_gauge, no_run_yet, render_html, sub_score_rows
 
 
 def render():
@@ -27,7 +27,7 @@ def render():
 
         st.markdown("")
         bn = result.get("bottleneck", {})
-        st.markdown(
+        render_html(
             f"""
             <div class="tp-card">
                 <div class="tp-card-title">Grade</div>
@@ -37,6 +37,5 @@ def render():
                 </div>
                 <div class="tp-reco-meta" style="color:#94a3b8;">{bn.get('message', '')}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )

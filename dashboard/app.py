@@ -11,7 +11,7 @@ sys.path.insert(
 
 load_dotenv()
 
-from dashboard.ui.components import inject_theme, render_header
+from dashboard.ui.components import inject_theme, render_header, render_html
 from dashboard.ui.helpers import NAV_PAGES, groq_configured, signoz_configured
 from dashboard.ui.pages import (
     cost,
@@ -94,7 +94,7 @@ with st.sidebar:
     signoz_status = "Connected" if signoz_ok else "Not Configured"
     signoz_class = "connected" if signoz_ok else "offline"
 
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-sidebar-status">
             <div style="margin-bottom:0.5rem;font-weight:600;color:#94a3b8;">
@@ -107,8 +107,7 @@ with st.sidebar:
                 <span class="tp-badge {signoz_class}">● SigNoz {signoz_status}</span>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 # =====================================

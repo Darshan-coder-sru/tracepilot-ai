@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from dashboard.db import get_run_history
-from dashboard.ui.components import failure_card, no_run_yet
+from dashboard.ui.components import failure_card, no_run_yet, render_html
 
 
 def render():
@@ -16,14 +16,13 @@ def render():
     if not result:
         no_run_yet("Failure analysis")
     elif not result.get("error") or not result.get("failure_report"):
-        st.markdown(
+        render_html(
             """
             <div class="tp-card" style="border-left:3px solid #22c55e;text-align:center;padding:2rem;">
                 <div style="font-size:1.25rem;font-weight:600;color:#4ade80;">No Failures Detected</div>
                 <div style="color:#94a3b8;margin-top:0.5rem;">The last run completed successfully.</div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
     else:
         report = result["failure_report"]

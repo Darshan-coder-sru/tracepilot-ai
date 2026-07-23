@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from observability.signoz_client import fetch_recent_traces
-from dashboard.ui.components import trace_tree_html
+from dashboard.ui.components import render_html, trace_tree_html
 
 
 def render():
@@ -70,9 +70,9 @@ def render():
         result = st.session_state.get("last_result")
         st.markdown("#### Execution Tree")
         if result:
-            st.markdown(trace_tree_html(result), unsafe_allow_html=True)
+            render_html(trace_tree_html(result))
         else:
-            st.markdown(
+            render_html(
                 f"""
                 <div class="tp-trace-tree">
                     <div><span class="span-name">research_agent</span>
@@ -83,8 +83,7 @@ def render():
                     <div style="padding-left:1rem;">├── web_search</div>
                     <div style="padding-left:1rem;">└── llm_analysis</div>
                 </div>
-                """,
-                unsafe_allow_html=True,
+                """
             )
 
     chart_df = trace_df.dropna(subset=["health_score"]).iloc[::-1]

@@ -5,6 +5,24 @@ import streamlit as st
 from dashboard.ui.helpers import health_color_label, status_class
 
 
+def _html(fragment: str) -> str:
+    """Normalize an HTML fragment before rendering with unsafe_allow_html.
+
+    Streamlit's markdown parser treats indented lines (4+ spaces) that
+    follow a blank/whitespace-only line as an indented *code block*,
+    which causes raw HTML tags to show up as literal text instead of
+    being rendered. This strips per-line leading/trailing whitespace so
+    multi-line f-strings (especially ones built inside loops) always
+    render as real HTML.
+    """
+    return "\n".join(line.strip() for line in fragment.strip("\n").split("\n"))
+
+
+def render_html(fragment: str):
+    """Render an HTML fragment safely via st.markdown, normalized with _html()."""
+    st.markdown(_html(fragment), unsafe_allow_html=True)
+
+
 def inject_theme():
     from dashboard.ui.theme import CUSTOM_CSS
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -18,7 +36,7 @@ def render_header(agent_online=True, environment="Development"):
     agent_label = "Online" if agent_online else "Offline"
     agent_class = "online" if agent_online else "offline"
 
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-header">
             <div class="tp-header-left">
@@ -31,8 +49,7 @@ def render_header(agent_online=True, environment="Development"):
                 <span class="tp-badge {signoz_class}">● SigNoz {signoz_label}</span>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -47,15 +64,14 @@ def metric_card(label, value, trend=None, trend_label=""):
         else:
             trend_html = f'<div class="tp-card-trend">— {trend_label}</div>'
 
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-card">
             <div class="tp-card-title">{label}</div>
             <div class="tp-card-value">{value}</div>
             {trend_html}
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -64,7 +80,7 @@ def health_gauge(score, status_text=None):
     pct = max(0, min(100, score))
     color = "#22c55e" if score >= 80 else "#f59e0b" if score >= 50 else "#ef4444"
 
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-gauge-wrap">
             <div class="tp-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, rgba(148,163,184,0.15) 0deg);">
@@ -76,8 +92,7 @@ def health_gauge(score, status_text=None):
             <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Agent Health</div>
             <div style="color:#94a3b8;font-size:0.875rem;">Status: {status}</div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
@@ -91,12 +106,12 @@ def sub_score_rows(sub_scores):
             <span><span class="tp-status-dot {dot_class}"></span>{label}</span>
         </div>
         """
-    st.markdown(f'<div class="tp-card">{rows}</div>', unsafe_allow_html=True)
+    render_html(f'<div class="tp-card">{rows}</div>')
 
 
 def bottleneck_card(bottleneck):
     sev = bottleneck.get("severity", "LOW").lower()
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-card tp-bottleneck {sev}">
             <div class="tp-card-title">Bottleneck Detected</div>
@@ -109,20 +124,18 @@ def bottleneck_card(bottleneck):
                 Recommendation: {bottleneck['suggestion']}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def empty_state(title, message, button_label=None, button_key=None):
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-empty">
             <h3>{title}</h3>
             <p>{message}</p>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
     if button_label and button_key:
         if st.button(button_label, type="primary", key=button_key):
@@ -165,12 +178,12 @@ def render_vertical_timeline(timeline_steps, start_label="Agent Started", end_la
     </div>
     """
 
-    st.markdown(f'<div class="tp-timeline">{items_html}</div>', unsafe_allow_html=True)
+    render_html(f'<div class="tp-timeline">{items_html}</div>')
 
 
 def recommendation_card(rec):
     priority = rec.get("priority", "LOW").lower()
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-reco-card {priority}">
             <div class="tp-reco-title">{rec.get('icon', '')} {rec.get('area', 'General')}</div>
@@ -179,13 +192,12 @@ def recommendation_card(rec):
                 <strong>Priority:</strong> {rec.get('priority', 'LOW')}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def failure_card(report, bottleneck_severity="HIGH"):
-    st.markdown(
+    render_html(
         f"""
         <div class="tp-card" style="border-left:3px solid #ef4444;">
             <div class="tp-card-title">Failure Detected</div>
@@ -199,17 +211,13 @@ def failure_card(report, bottleneck_severity="HIGH"):
                 <strong>Severity:</strong> {bottleneck_severity}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
 
 def answer_card(text, is_error=False):
     border = "#ef4444" if is_error else "var(--tp-border)"
-    st.markdown(
-        f'<div class="tp-answer-card" style="border-color:{border};">{text}</div>',
-        unsafe_allow_html=True,
-    )
+    render_html(f'<div class="tp-answer-card" style="border-color:{border};">{text}</div>')
 
 
 def trace_tree_html(result):
@@ -221,12 +229,14 @@ def trace_tree_html(result):
     status_cls = "span-err" if err else "span-ok"
     bn = result.get("bottleneck", {})
 
-    return f"""
-    <div class="tp-trace-tree">
-        <div><span class="span-name">research_agent</span> <span class="{status_cls}">{'ERROR' if err else 'OK'}</span> — {result.get('total_latency', 0):.2f}s</div>
-        <div style="padding-left:1rem;">├── <span class="span-name">planning</span> <span class="span-ok">OK</span></div>
-        <div style="padding-left:1rem;">├── <span class="span-name">web_search</span> <span class="span-ok">OK</span> — {result.get('search_latency', 0):.2f}s</div>
-        <div style="padding-left:1rem;">├── <span class="span-name">llm_analysis</span> <span class="{status_cls}">{'ERROR' if err else 'OK'}</span> — {result.get('llm_latency', 0):.2f}s</div>
-        <div style="padding-left:1rem;">└── <span class="span-name">metrics</span> health={result.get('health_score', 'N/A')} bottleneck={bn.get('component', 'N/A')}</div>
-    </div>
-    """
+    return _html(
+        f"""
+        <div class="tp-trace-tree">
+            <div><span class="span-name">research_agent</span> <span class="{status_cls}">{'ERROR' if err else 'OK'}</span> — {result.get('total_latency', 0):.2f}s</div>
+            <div style="padding-left:1rem;">├── <span class="span-name">planning</span> <span class="span-ok">OK</span></div>
+            <div style="padding-left:1rem;">├── <span class="span-name">web_search</span> <span class="span-ok">OK</span> — {result.get('search_latency', 0):.2f}s</div>
+            <div style="padding-left:1rem;">├── <span class="span-name">llm_analysis</span> <span class="{status_cls}">{'ERROR' if err else 'OK'}</span> — {result.get('llm_latency', 0):.2f}s</div>
+            <div style="padding-left:1rem;">└── <span class="span-name">metrics</span> health={result.get('health_score', 'N/A')} bottleneck={bn.get('component', 'N/A')}</div>
+        </div>
+        """
+    )

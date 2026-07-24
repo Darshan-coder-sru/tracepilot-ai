@@ -5,7 +5,15 @@ from groq import Groq
 from dotenv import load_dotenv
 from duckduckgo_search import DDGS
 
-from observability.telemetry import tracer
+from observability.telemetry import (
+    tracer,
+    logger,
+    run_counter,
+    error_counter,
+    latency_histogram,
+    token_counter,
+    cost_counter,
+)
 
 from dashboard.health_score import (
     calculate_health_score,
@@ -174,6 +182,9 @@ def research_agent(question):
     cost_data = None
     response = None
 
+    run_counter.add(1)
+    logger.info("agent run started", extra={"agent.question": question})
+
     with tracer.start_as_current_span("research_agent") as agent_span:
 
         agent_span.set_attribute("agent.question", question)
@@ -230,6 +241,13 @@ def research_agent(question):
             agent_span.set_attribute("agent.health_grade", result["health_grade"])
             agent_span.set_attribute("agent.bottleneck", result["bottleneck"]["component"])
             agent_span.set_attribute("agent.error", True)
+
+            error_counter.add(1, {"agent.failure_stage": "web_search"})
+            latency_histogram.record(total_latency, {"agent.status": "error"})
+            logger.error(
+                "agent run failed during web search",
+                extra={"agent.question": question, "agent.error": str(exc)},
+            )
 
             log_run(question, result)
 
@@ -340,6 +358,31 @@ Give a clear, accurate, and useful answer.
         agent_span.set_attribute("agent.health_grade", result["health_grade"])
         agent_span.set_attribute("agent.bottleneck", result["bottleneck"]["component"])
         agent_span.set_attribute("agent.error", error_occurred)
+
+        latency_histogram.record(
+            total_latency,
+            {"agent.status": "error" if error_occurred else "ok"},
+        )
+
+        if cost_data:
+            token_counter.add(cost_data["total_tokens"])
+            cost_counter.add(cost_data["total_cost_usd"])
+
+        if error_occurred:
+            error_counter.add(1, {"agent.failure_stage": "llm_analysis"})
+            logger.error(
+                "agent run completed with error",
+                extra={"agent.question": question, "agent.health_score": result["health_score"]},
+            )
+        else:
+            logger.info(
+                "agent run completed",
+                extra={
+                    "agent.question": question,
+                    "agent.health_score": result["health_score"],
+                    "agent.total_latency_seconds": total_latency,
+                },
+            )
 
         # =============================================
         # STEP 6: PRINT FULL DASHBOARD (terminal mode)
